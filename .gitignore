@@ -1,0 +1,5 @@
+/deployment/target/
+/integration-tests/inmemory/target/
+/integration-tests/vault/target/
+/runtime/target/
+/.idea/
