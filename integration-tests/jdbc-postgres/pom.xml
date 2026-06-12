@@ -8,6 +8,13 @@
         <artifactId>secret-extension-integration-tests-parent</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>secret-extension-integration-tests-inmemory</artifactId>
-    <name>Secret Extension - Integration Tests Inmemory</name>
+    <artifactId>secret-extension-integration-tests-jdbc-postgres</artifactId>
+    <name>Secret Extension - Integration Tests Jdbc Postgres</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-postgresql</artifactId>
+        </dependency>
+    </dependencies>
 </project>

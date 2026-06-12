@@ -21,6 +21,11 @@
             <version>${quarkus-vault.version}</version>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-postgresql</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>

@@ -13,7 +13,7 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>inmemory</module>
+        <module>jdbc-postgres</module>
         <module>vault</module>
     </modules>
 

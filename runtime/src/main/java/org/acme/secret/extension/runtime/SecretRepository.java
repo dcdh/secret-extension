@@ -4,7 +4,7 @@ import java.util.Optional;
 
 public interface SecretRepository {
 
-    Optional<String> getSecret(String name);
+    Optional<String> getSecret(String name) throws UnableToRetrieveSecretException;
 
-    String store(String name, String secret);
+    String store(String name, String secret) throws SecretAlreadyStoredException, UnableToStoreSecretException;
 }

@@ -20,7 +20,7 @@ public class VaultSecretRepository implements SecretRepository {
     }
 
     @Override
-    public Optional<String> getSecret(final String name) {
+    public Optional<String> getSecret(final String name) throws UnableToRetrieveSecretException {
         Objects.requireNonNull(name);
         try {
             final Map<String, String> data = vaultKVSecretEngine.readSecret(name);
@@ -33,20 +33,20 @@ public class VaultSecretRepository implements SecretRepository {
             if (Integer.valueOf(404).equals(vaultClientException.getStatus())) {
                 return Optional.empty();
             } else {
-                throw vaultClientException;
+                throw new UnableToRetrieveSecretException(vaultClientException);
             }
         }
     }
 
     @Override
-    public String store(final String name, final String value) {
+    public String store(final String name, final String value) throws SecretAlreadyStoredException, UnableToStoreSecretException {
         Objects.requireNonNull(name);
         Objects.requireNonNull(value);
         final Map<String, String> secret = Map.of("secret", value);
         try {
             final Map<String, String> existing = vaultKVSecretEngine.readSecret(name);
             if (existing != null && existing.containsKey("secret")) {
-                throw new IllegalStateException("Secret already exists");
+                throw new SecretAlreadyStoredException();
             } else {
                 vaultKVSecretEngine.writeSecret(name, secret);
                 return value;
@@ -57,7 +57,7 @@ public class VaultSecretRepository implements SecretRepository {
                 vaultKVSecretEngine.writeSecret(name, secret);
                 return value;
             } else {
-                throw vaultClientException;
+                throw new UnableToStoreSecretException(vaultClientException);
             }
         }
     }
