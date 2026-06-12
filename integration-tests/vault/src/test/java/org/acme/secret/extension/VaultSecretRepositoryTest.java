@@ -1,57 +1,71 @@
 package org.acme.secret.extension;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.vault.VaultKVSecretEngine;
-import jakarta.inject.Inject;
-import org.acme.secret.extension.runtime.SecretAlreadyStoredException;
-import org.acme.secret.extension.runtime.UnableToRetrieveSecretException;
-import org.acme.secret.extension.runtime.UnableToStoreSecretException;
-import org.acme.secret.extension.runtime.VaultSecretRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
-import java.util.Optional;
-
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 @QuarkusTest
 class VaultSecretRepositoryTest {
 
-    @Inject
-    VaultSecretRepository vaultSecretRepository;
-
-    @Inject
-    VaultKVSecretEngine vaultKVSecretEngine;
-
-    @AfterEach
     @BeforeEach
+    @AfterEach
     void tearDown() {
-        vaultKVSecretEngine.deleteSecret("my-secret");
+        given().when()
+                .delete("/secret/{name}/tearDown", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(204);
     }
 
     @Test
-    void shouldStoreSecret() throws SecretAlreadyStoredException, UnableToRetrieveSecretException, UnableToStoreSecretException {
-        Optional<String> firstGet = vaultSecretRepository.getSecret("my-secret");
-        String stored = vaultSecretRepository.store("my-secret", "my-value");
-        Optional<String> secondGet = vaultSecretRepository.getSecret("my-secret");
-        Map<String, String> secret = vaultKVSecretEngine.readSecret("my-secret");
+    void shouldStoreSecret() {
+        String firstGet = given().when()
+                .get("/secret/{name}", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract().body().asString();
+        String stored = given().when()
+                .formParam("value", "my-value")
+                .post("/secret/{name}/store", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract().body().asString();
+        String secondGet = given().when()
+                .get("/secret/{name}", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract().body().asString();
 
         assertAll(
-                () -> assertThat(firstGet).isEmpty(),
+                () -> assertThat(firstGet).isEqualTo("null"),
                 () -> assertThat(stored).isEqualTo("my-value"),
-                () -> assertThat(secondGet).isEqualTo(Optional.of("my-value")),
-                () -> assertThat(secret).isEqualTo(Map.of("secret", "my-value"))
+                () -> assertThat(secondGet).isEqualTo("my-value")
         );
     }
 
     @Test
-    void shouldFailToStoreSecretWhenAlreadyStored() throws SecretAlreadyStoredException, UnableToStoreSecretException {
-        vaultSecretRepository.store("my-secret", "my-value");
-        assertThatThrownBy(() -> vaultSecretRepository.store("my-secret", "new-my-value"))
-                .isExactlyInstanceOf(SecretAlreadyStoredException.class);
+    void shouldFailToStoreSecretWhenAlreadyStored() {
+        given().when()
+                .formParam("value", "my-value")
+                .post("/secret/{name}/store", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(200);
+        String exception = given().when()
+                .formParam("value", "my-value")
+                .post("/secret/{name}/store", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(409)
+                .extract().body().asString();
+        assertThat(exception).isEqualTo("SecretAlreadyStoredException");
     }
 }

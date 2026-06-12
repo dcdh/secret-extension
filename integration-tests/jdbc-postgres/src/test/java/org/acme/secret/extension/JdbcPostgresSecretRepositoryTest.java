@@ -1,64 +1,71 @@
 package org.acme.secret.extension;
 
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
-import org.acme.secret.extension.runtime.JdbcPostgresSecretRepository;
-import org.acme.secret.extension.runtime.SecretAlreadyStoredException;
-import org.acme.secret.extension.runtime.UnableToRetrieveSecretException;
-import org.acme.secret.extension.runtime.UnableToStoreSecretException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.postgresql.util.PSQLException;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Optional;
-
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 @QuarkusTest
 class JdbcPostgresSecretRepositoryTest {
 
-    @Inject
-    JdbcPostgresSecretRepository jdbcPostgresSecretRepository;
-
-    @Inject
-    DataSource dataSource;
-
     @BeforeEach
     @AfterEach
     void tearDown() {
-        try (final Connection connection = dataSource.getConnection();
-             final Statement stmt = connection.createStatement()) {
-            stmt.execute("TRUNCATE TABLE secret");
-        } catch (final SQLException e) {
-            throw new RuntimeException(e);
-        }
+        given().when()
+                .delete("/secret/{name}/tearDown", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(204);
     }
 
     @Test
-    void shouldStoreSecret() throws SecretAlreadyStoredException, UnableToRetrieveSecretException, UnableToStoreSecretException {
-        Optional<String> firstGet = jdbcPostgresSecretRepository.getSecret("my-secret");
-        String stored = jdbcPostgresSecretRepository.store("my-secret", "my-value");
-        Optional<String> secondGet = jdbcPostgresSecretRepository.getSecret("my-secret");
+    void shouldStoreSecret() {
+        String firstGet = given().when()
+                .get("/secret/{name}", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract().body().asString();
+        String stored = given().when()
+                .formParam("value", "my-value")
+                .post("/secret/{name}/store", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract().body().asString();
+        String secondGet = given().when()
+                .get("/secret/{name}", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract().body().asString();
 
         assertAll(
-                () -> assertThat(firstGet).isEmpty(),
+                () -> assertThat(firstGet).isEqualTo("null"),
                 () -> assertThat(stored).isEqualTo("my-value"),
-                () -> assertThat(secondGet).isEqualTo(Optional.of("my-value"))
+                () -> assertThat(secondGet).isEqualTo("my-value")
         );
     }
 
     @Test
-    void shouldFailToStoreSecretWhenAlreadyStored() throws SecretAlreadyStoredException, UnableToStoreSecretException {
-        jdbcPostgresSecretRepository.store("my-secret", "my-value");
-        assertThatThrownBy(() -> jdbcPostgresSecretRepository.store("my-secret", "new-my-value"))
-                .isInstanceOf(SecretAlreadyStoredException.class)
-                .hasRootCauseInstanceOf(PSQLException.class);
+    void shouldFailToStoreSecretWhenAlreadyStored() {
+        given().when()
+                .formParam("value", "my-value")
+                .post("/secret/{name}/store", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(200);
+        String exception = given().when()
+                .formParam("value", "my-value")
+                .post("/secret/{name}/store", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(409)
+                .extract().body().asString();
+        assertThat(exception).isEqualTo("SecretAlreadyStoredException -> PSQLException");
     }
 }
