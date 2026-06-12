@@ -16,9 +16,12 @@ import java.util.Optional;
 public class JdbcPostgresSecretRepository implements SecretRepository {
 
     private final DataSource dataSource;
+    private final SecretConfiguration secretConfiguration;
 
-    public JdbcPostgresSecretRepository(final DataSource dataSource) {
+    public JdbcPostgresSecretRepository(final DataSource dataSource,
+                                        final SecretConfiguration secretConfiguration) {
         this.dataSource = Objects.requireNonNull(dataSource);
+        this.secretConfiguration = Objects.requireNonNull(secretConfiguration);
     }
 
     @Override
@@ -26,11 +29,13 @@ public class JdbcPostgresSecretRepository implements SecretRepository {
         final String sql =
                 // language=sql
                 """
-                        SELECT value FROM secret WHERE name = ?
+                        SELECT public.pgp_sym_decrypt(value,?) AS value FROM secret WHERE name = ?
                         """;
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, name);
+            stmt.setString(1, secretConfiguration.postgres().masterKey().orElseThrow(() -> new UnableToRetrieveSecretException(
+                    new IllegalArgumentException("masterKey is missing"))));
+            stmt.setString(2, name);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (!rs.next()) {
                     return Optional.empty();
@@ -49,12 +54,14 @@ public class JdbcPostgresSecretRepository implements SecretRepository {
         final String sql =
                 // language=sql
                 """
-                        INSERT INTO secret(name, value) VALUES (?, ?)
+                        INSERT INTO secret(name, value) VALUES (?, public.pgp_sym_encrypt(?::text,?))
                         """;
         try (final Connection connection = dataSource.getConnection();
              final PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, name);
             stmt.setString(2, value);
+            stmt.setString(3, secretConfiguration.postgres().masterKey().orElseThrow(() -> new UnableToStoreSecretException(
+                    new IllegalArgumentException("masterKey is missing"))));
             stmt.executeUpdate();
             return value;
         } catch (final SQLException sqlException) {

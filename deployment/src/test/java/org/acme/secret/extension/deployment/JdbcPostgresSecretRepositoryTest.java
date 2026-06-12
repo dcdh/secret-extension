@@ -17,9 +17,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.postgresql.util.PSQLException;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,10 +60,27 @@ class JdbcPostgresSecretRepositoryTest {
         String stored = jdbcPostgresSecretRepository.store("my-secret", "my-value");
         Optional<String> secondGet = jdbcPostgresSecretRepository.getSecret("my-secret");
 
+        String encryptedValue;
+        try (final Connection connection = dataSource.getConnection();
+             final PreparedStatement ps = connection.prepareStatement(
+                     // language=sql
+                     """
+                             SELECT value FROM secret WHERE name = ?
+                             """)) {
+            ps.setString(1, "my-secret");
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                encryptedValue = rs.getString("value");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
         assertAll(
                 () -> assertThat(firstGet).isEmpty(),
                 () -> assertThat(stored).isEqualTo("my-value"),
-                () -> assertThat(secondGet).isEqualTo(Optional.of("my-value"))
+                () -> assertThat(secondGet).isEqualTo(Optional.of("my-value")),
+                () -> assertThat(encryptedValue).startsWith("\\x")
         );
     }
 

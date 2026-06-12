@@ -14,8 +14,8 @@ import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.stream.Collectors;
 
 @Path("/secret")
@@ -59,6 +59,27 @@ public class JdbcPostgresSecretRepositoryResource {
     @GET
     public String getSecret(@PathParam("name") String name) throws UnableToRetrieveSecretException {
         return jdbcPostgresSecretRepository.getSecret(name).orElse("null");
+    }
+
+    @Path("/{name}/encrypted")
+    @GET
+    public String getEncryptedSecret(@PathParam("name") String name) {
+        String encryptedValue;
+        try (final Connection connection = dataSource.getConnection();
+             final PreparedStatement ps = connection.prepareStatement(
+                     // language=sql
+                     """
+                             SELECT value FROM secret WHERE name = ?
+                             """)) {
+            ps.setString(1, name);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                encryptedValue = rs.getString("value");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return encryptedValue;
     }
 
     @Path("/{name}/store")

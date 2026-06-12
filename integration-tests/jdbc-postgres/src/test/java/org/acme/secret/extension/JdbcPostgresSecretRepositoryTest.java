@@ -43,11 +43,18 @@ class JdbcPostgresSecretRepositoryTest {
                 .log().all()
                 .statusCode(200)
                 .extract().body().asString();
+        String encryptedValue = given().when()
+                .get("/secret/{name}/encrypted", "my-secret")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract().body().asString();
 
         assertAll(
                 () -> assertThat(firstGet).isEqualTo("null"),
                 () -> assertThat(stored).isEqualTo("my-value"),
-                () -> assertThat(secondGet).isEqualTo("my-value")
+                () -> assertThat(secondGet).isEqualTo("my-value"),
+                () -> assertThat(encryptedValue).startsWith("\\x")
         );
     }
 
