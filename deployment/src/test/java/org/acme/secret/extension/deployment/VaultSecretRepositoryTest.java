@@ -26,7 +26,8 @@ class VaultSecretRepositoryTest {
     @RegisterExtension
     static QuarkusExtensionTest runner = new QuarkusExtensionTest()
             .setForcedDependencies(List.of(
-                    Dependency.of("io.quarkiverse.vault", "quarkus-vault", "4.7.0")
+                    Dependency.of("io.quarkiverse.vault", "quarkus-vault", "4.7.0"),
+                    Dependency.of("io.quarkiverse.vault", "quarkus-vault-deployment", "4.7.0")
             ));
 
     @Inject

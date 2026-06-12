@@ -35,7 +35,8 @@ class JdbcPostgresSecretRepositoryTest {
                     .addAsResource("init.sql", "init.sql"))
             .withConfigurationResource("application.properties")
             .setForcedDependencies(List.of(
-                    Dependency.of("io.quarkus", "quarkus-jdbc-postgresql", Version.getVersion())
+                    Dependency.of("io.quarkus", "quarkus-jdbc-postgresql", Version.getVersion()),
+                    Dependency.of("io.quarkus", "quarkus-jdbc-postgresql-deployment", Version.getVersion())
             ));
 
     @Inject

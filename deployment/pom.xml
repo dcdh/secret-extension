@@ -68,12 +68,6 @@
                     <systemProperties>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                     </systemProperties>
-                    <classpathDependencyExcludes>
-                        <classpathDependencyExclude>io.quarkiverse.vault:quarkus-vault-deployment</classpathDependencyExclude>
-                        <classpathDependencyExclude>io.quarkiverse.vault:quarkus-vault</classpathDependencyExclude>
-                        <classpathDependencyExclude>io.quarkus:quarkus-jdbc-postgresql-deployment</classpathDependencyExclude>
-                        <classpathDependencyExclude>io.quarkus:quarkus-jdbc-postgresql</classpathDependencyExclude>
-                    </classpathDependencyExcludes>
                 </configuration>
             </plugin>
         </plugins>
